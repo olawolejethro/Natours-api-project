@@ -1,4 +1,12 @@
 const tourModel = require("../model/tourmodel");
+const APIFeatures = require("../utils/apiFeatures");
+exports.aliasTopTour = (req, res, next) => {
+  req.query.limit = "5";
+  req.query.sort = "-ratingaverage,price";
+  req.query.field = "name,price,ratingAverage,summary,difficulty";
+  next();
+};
+
 exports.createTour = async (req, res) => {
   try {
     const newTour = await tourModel.create(req.body);
@@ -18,20 +26,24 @@ exports.createTour = async (req, res) => {
 
 exports.getAllTours = async (req, res) => {
   try {
-    const queryObj = { ...req.query };
-    const excludedField = ["page", "sort", "limit", "fields"];
-    excludedField.forEach((el) => delete queryObj[el]);
-
-    const query = await tourModel.find(queryObj);
-
-    // const tours = await query
+    // EXCEUTING QUERY
+    const features = new APIFeatures(tourModel.find(), req.query)
+      .filter()
+      .sort()
+      .limitField()
+      .pagination();
+    const tours = await features.query;
+    // SNED RESPONSE
     res.status(201).json({
       status: "success",
+
       data: {
+        length: tours.length,
         tour: tours,
       },
     });
   } catch (error) {
+    throw error;
     res.status(400).json({
       status: "failed",
       // message: error,
@@ -39,7 +51,7 @@ exports.getAllTours = async (req, res) => {
   }
 };
 
-exports.gettourById = async (req, res) => {
+exports.getTourById = async (req, res) => {
   try {
     const tour = await tourModel.findById(req.params.id);
     res.status(201).json({
